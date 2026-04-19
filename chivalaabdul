@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NetLink – Open Netflix Links</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 40px 16px 60px;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .glow {
+      position: fixed;
+      top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse at center, rgba(229,9,20,0.22) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 42px;
+      color: #E50914;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+    }
+
+    .tagline {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 36px;
+      letter-spacing: 0.5px;
+    }
+
+    .card {
+      width: 100%;
+      background: #1c1c1c;
+      border: 0.5px solid #2e2e2e;
+      border-radius: 14px;
+      padding: 28px 24px 22px;
+      position: relative;
+    }
+
+    .field-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #555;
+      margin-bottom: 12px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      height: 46px;
+      background: #111;
+      border: 0.5px solid #3a3a3a;
+      border-radius: 9px;
+      color: #eee;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      padding: 0 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    input[type="text"]::placeholder { color: #444; }
+    input[type="text"]:focus { border-color: #E50914; }
+
+    .btn-paste {
+      height: 46px;
+      padding: 0 18px;
+      background: #E50914;
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-paste:hover { background: #f5141f; }
+    .btn-paste:active { transform: scale(0.96); background: #c00811; }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 18px 0;
+    }
+    .divider-line { flex: 1; height: 0.5px; background: #2a2a2a; }
+    .divider-text { font-size: 12px; color: #444; }
+
+    .btn-clear {
+      width: 100%;
+      height: 40px;
+      background: transparent;
+      border: 0.5px solid #333;
+      border-radius: 9px;
+      color: #666;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-clear:hover { border-color: #555; color: #aaa; }
+
+    .toast {
+      position: absolute;
+      top: 14px; right: 14px;
+      background: #2a2a2a;
+      border: 0.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 13px;
+      color: #bbb;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .toast.show { opacity: 1; }
+
+    .result {
+      width: 100%;
+      margin-top: 18px;
+      display: none;
+    }
+    .result.visible { display: block; }
+
+    .result-card {
+      background: #181818;
+      border: 0.5px solid #2a2a2a;
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #2ecc71;
+      flex-shrink: 0;
+    }
+    .status-dot.error { background: #E50914; }
+    .status-dot.warn { background: #f39c12; }
+
+    .result-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #bbb;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 7px 16px;
+      font-size: 13px;
+    }
+    .meta-label { color: #555; }
+    .meta-value { color: #ccc; word-break: break-all; }
+
+    .btn-open {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 18px;
+      width: 100%;
+      height: 46px;
+      background: #E50914;
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-open:hover { background: #f5141f; }
+    .btn-open:active { background: #c00811; }
+
+    .history {
+      width: 100%;
+      margin-top: 24px;
+      display: none;
+    }
+    .history.visible { display: block; }
+
+    .history-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #444;
+      margin-bottom: 10px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .history-item {
+      background: #181818;
+      border: 0.5px solid #252525;
+      border-radius: 9px;
+      padding: 11px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .history-item:hover { border-color: #3a3a3a; }
+
+    .history-url {
+      flex: 1;
+      font-size: 12px;
+      color: #666;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .history-badge {
+      font-size: 11px;
+      color: #E50914;
+      background: rgba(229,9,20,0.12);
+      border-radius: 5px;
+      padding: 2px 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #333;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="glow"></div>
+
+  <div class="container">
+    <div class="logo">NETLINK</div>
+    <div class="tagline">Paste & open Netflix links on any device</div>
+
+    <div class="card">
+      <div class="toast" id="toast">Pasted!</div>
+      <div class="field-label">Netflix URL</div>
+      <div class="input-row">
+        <input type="text" id="urlInput" placeholder="Paste your Netflix link here…" autocomplete="off" autocorrect="off" spellcheck="false" />
+        <button class="btn-paste" onclick="pasteUrl()">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5" y="2" width="9" height="11" rx="1.5"/>
+            <path d="M5 4H3.5A1.5 1.5 0 0 0 2 5.5v8A1.5 1.5 0 0 0 3.5 15h7A1.5 1.5 0 0 0 12 13.5V13"/>
+          </svg>
+          Paste
+        </button>
+      </div>
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-text">or type / paste manually above</div>
+        <div class="divider-line"></div>
+      </div>
+      <button class="btn-clear" onclick="clearAll()">Clear</button>
+    </div>
+
+    <div class="result" id="result">
+      <div class="result-card">
+        <div class="result-header">
+          <div class="status-dot" id="statusDot"></div>
+          <div class="result-title" id="resultTitle"></div>
+        </div>
+        <div class="meta-grid" id="metaGrid"></div>
+        <a class="btn-open" id="openBtn" target="_blank" rel="noopener noreferrer">
+          Open on Netflix ↗
+        </a>
+      </div>
+    </div>
+
+    <div class="history" id="historySection">
+      <div class="history-label">Recent links</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div class="footer">Save this file & open it in your phone browser anytime</div>
+  </div>
+
+  <script>
+    const history = [];
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    async function pasteUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        const input = document.getElementById('urlInput');
+        input.value = text.trim();
+        showToast('Pasted!');
+        analyzeUrl(text.trim());
+      } catch {
+        showToast('Tap the input & paste manually');
+      }
+    }
+
+    document.getElementById('urlInput').addEventListener('input', function () {
+      const val = this.value.trim();
+      if (val) analyzeUrl(val);
+      else hideResult();
+    });
+
+    document.getElementById('urlInput').addEventListener('paste', function () {
+      setTimeout(() => {
+        const val = this.value.trim();
+        if (val) analyzeUrl(val);
+      }, 10);
+    });
+
+    function analyzeUrl(raw) {
+      const resultEl = document.getElementById('result');
+      const dot = document.getElementById('statusDot');
+      const title = document.getElementById('resultTitle');
+      const grid = document.getElementById('metaGrid');
+      const btn = document.getElementById('openBtn');
+
+      let url;
+      try {
+        url = new URL(raw.startsWith('http') ? raw : 'https://' + raw);
+      } catch {
+        dot.className = 'status-dot error';
+        title.textContent = 'Invalid URL';
+        grid.innerHTML = '<span class="meta-label">Issue</span><span class="meta-value" style="color:#E50914;">Could not parse this link</span>';
+        btn.style.display = 'none';
+        resultEl.classList.add('visible');
+        return;
+      }
+
+      const host = url.hostname.replace('www.', '');
+      const isNetflix = host === 'netflix.com';
+      const path = url.pathname;
+
+      let type = 'Page';
+      let contentId = null;
+
+      if (/\/watch\/(\d+)/.test(path)) {
+        type = 'Watch';
+        contentId = path.match(/\/watch\/(\d+)/)[1];
+      } else if (/\/title\/(\d+)/.test(path)) {
+        type = 'Title';
+        contentId = path.match(/\/title\/(\d+)/)[1];
+      } else if (/\/browse/.test(path)) {
+        type = 'Browse';
+      } else if (/\/search/.test(path)) {
+        type = 'Search';
+      } else if (/\/signup/.test(path)) {
+        type = 'Signup';
+      }
+
+      dot.className = 'status-dot' + (isNetflix ? '' : ' warn');
+      title.textContent = isNetflix ? 'Netflix link detected' : 'External link — not Netflix';
+
+      let rows = '<span class="meta-label">Host</span><span class="meta-value">' + host + '</span>';
+      rows += '<span class="meta-label">Type</span><span class="meta-value">' + type + '</span>';
+      rows += '<span class="meta-label">Path</span><span class="meta-value">' + (path || '/') + '</span>';
+      if (contentId) rows += '<span class="meta-label">ID</span><span class="meta-value">' + contentId + '</span>';
+      if (url.search) rows += '<span class="meta-label">Params</span><span class="meta-value">' + url.search + '</span>';
+
+      grid.innerHTML = rows;
+      btn.href = raw.startsWith('http') ? raw : 'https://' + raw;
+      btn.style.display = isNetflix ? 'flex' : 'none';
+      resultEl.classList.add('visible');
+
+      if (isNetflix) addToHistory(raw, type);
+    }
+
+    function addToHistory(url, type) {
+      if (history.find(h => h.url === url)) return;
+      history.unshift({ url, type });
+      if (history.length > 5) history.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const sec = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+      if (history.length === 0) { sec.classList.remove('visible'); return; }
+      sec.classList.add('visible');
+      list.innerHTML = history.map(h =>
+        '<div class="history-item" onclick="loadHistory(\'' + encodeURIComponent(h.url) + '\')">' +
+        '<span class="history-url">' + h.url + '</span>' +
+        '<span class="history-badge">' + h.type + '</span>' +
+        '</div>'
+      ).join('');
+    }
+
+    function loadHistory(encoded) {
+      const url = decodeURIComponent(encoded);
+      document.getElementById('urlInput').value = url;
+      analyzeUrl(url);
+    }
+
+    function hideResult() {
+      document.getElementById('result').classList.remove('visible');
+    }
+
+    function clearAll() {
+      document.getElementById('urlInput').value = '';
+      hideResult();
+    }
+  </script>
+</body>
+</html>
